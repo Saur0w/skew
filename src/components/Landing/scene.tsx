@@ -1,42 +1,30 @@
 "use client";
 
-import React, { useRef, useEffect, Suspense } from "react";
+import React, { useEffect, Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import MeshCard from "./mesh";
-import {
-  GALLERY_ITEMS,
-  BASE_ITEMS,
-  GalleryItem,
-} from "@/lib/data";
+import { GALLERY_ITEMS, BASE_ITEMS } from "@/lib/data";
 
 interface SceneContentProps {
-  velocityRef: React.MutableRefObject<number>;
   targetScrollRef: React.MutableRefObject<number>;
   currentScrollRef: React.MutableRefObject<number>;
   autoPlay: boolean;
-  onSelect: (item: GalleryItem) => void;
-  onHoverChange: (item: GalleryItem | null) => void;
-  onActiveIndexChange: (index: number) => void;
 }
 
 function SceneContent({
-  velocityRef,
   targetScrollRef,
   currentScrollRef,
   autoPlay,
-  onSelect,
-  onHoverChange,
-  onActiveIndexChange,
 }: SceneContentProps) {
   const { viewport } = useThree();
 
-  // Load the 9 base textures
+  // Load the 9 base textures from public/images/
   const textureUrls = BASE_ITEMS.map((item) => item.src);
   const textures = useTexture(textureUrls);
 
-  // Configure texture filtering
+  // Configure texture filtering for optimal quality
   useEffect(() => {
     textures.forEach((tex) => {
       tex.generateMipmaps = true;
@@ -46,51 +34,30 @@ function SceneContent({
     });
   }, [textures]);
 
-  // Dimensions
+  // Dimensions: smaller minimal meshes (refined editorial scale)
   const isMobile = viewport.width < 7.5;
   const cardWidth = isMobile
-    ? Math.min(2.8, Math.max(1.8, viewport.width * 0.36))
-    : Math.min(2.5, Math.max(1.9, viewport.width * 0.165));
+    ? Math.min(1.4, Math.max(1.0, viewport.width * 0.24))
+    : Math.min(1.3, Math.max(0.9, viewport.width * 0.082));
   const cardHeight = cardWidth * 1.38;
 
-  // Diagonal offsets matching Figma staircase
-  const stepX = cardWidth * 1.24;
+  // Diagonal offsets matching staircase layout
+  const stepX = cardWidth * 1.25;
   const stepY = -cardHeight * 0.68;
 
-  const lastActiveIndex = useRef(-1);
-
   useFrame((_, delta) => {
-    // Auto drift when enabled
+    // Subtle auto drift when enabled
     if (autoPlay) {
-      targetScrollRef.current += 0.28 * delta;
+      targetScrollRef.current += 0.16 * delta;
     }
 
-    // Smooth lerp
+    // Smooth lerp for scroll position
     const lerpSpeed = Math.min(1, delta * 12);
-    const prevScroll = currentScrollRef.current;
     currentScrollRef.current = THREE.MathUtils.lerp(
       currentScrollRef.current,
       targetScrollRef.current,
       lerpSpeed
     );
-
-    // Compute velocity
-    const instantVelocity =
-      (currentScrollRef.current - prevScroll) / Math.max(0.0001, delta);
-    velocityRef.current = THREE.MathUtils.damp(
-      velocityRef.current,
-      instantVelocity,
-      9,
-      delta
-    );
-
-    // Active item index calculation
-    const rawIdx = Math.round(currentScrollRef.current) % BASE_ITEMS.length;
-    const activeIdx = (rawIdx + BASE_ITEMS.length) % BASE_ITEMS.length;
-    if (activeIdx !== lastActiveIndex.current) {
-      lastActiveIndex.current = activeIdx;
-      onActiveIndexChange(activeIdx);
-    }
   });
 
   return (
@@ -109,9 +76,6 @@ function SceneContent({
             stepX={stepX}
             stepY={stepY}
             currentScrollRef={currentScrollRef}
-            velocityRef={velocityRef}
-            onSelect={onSelect}
-            onHoverChange={onHoverChange}
           />
         );
       })}
@@ -120,23 +84,15 @@ function SceneContent({
 }
 
 interface SceneProps {
-  autoPlay: boolean;
-  onSelect: (item: GalleryItem) => void;
-  onHoverChange: (item: GalleryItem | null) => void;
-  onActiveIndexChange: (index: number) => void;
+  autoPlay?: boolean;
   targetScrollRef: React.MutableRefObject<number>;
   currentScrollRef: React.MutableRefObject<number>;
-  velocityRef: React.MutableRefObject<number>;
 }
 
 export default function Scene({
-  autoPlay,
-  onSelect,
-  onHoverChange,
-  onActiveIndexChange,
+  autoPlay = true,
   targetScrollRef,
   currentScrollRef,
-  velocityRef,
 }: SceneProps) {
   return (
     <Canvas
@@ -158,13 +114,9 @@ export default function Scene({
     >
       <Suspense fallback={null}>
         <SceneContent
-          velocityRef={velocityRef}
           targetScrollRef={targetScrollRef}
           currentScrollRef={currentScrollRef}
           autoPlay={autoPlay}
-          onSelect={onSelect}
-          onHoverChange={onHoverChange}
-          onActiveIndexChange={onActiveIndexChange}
         />
       </Suspense>
     </Canvas>

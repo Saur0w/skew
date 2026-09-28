@@ -93,8 +93,8 @@ export const BASE_ITEMS: Omit<GalleryItem, "id">[] = [
   },
 ];
 
-// Repeat items to create a smooth, dense infinite loop (18 total items)
-export const TOTAL_ITEMS_COUNT = 18;
+// Repeat items to create a smooth, dense infinite loop (36 total items = 4 cycles)
+export const TOTAL_ITEMS_COUNT = 36;
 
 export const GALLERY_ITEMS: GalleryItem[] = Array.from(
   { length: TOTAL_ITEMS_COUNT },
