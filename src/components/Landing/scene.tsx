@@ -24,17 +24,7 @@ function SceneContent({
   const textureUrls = BASE_ITEMS.map((item) => item.src);
   const textures = useTexture(textureUrls);
 
-  // Configure texture filtering for optimal quality
-  useEffect(() => {
-    textures.forEach((tex) => {
-      tex.generateMipmaps = true;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.needsUpdate = true;
-    });
-  }, [textures]);
-
-  // Dimensions: smaller minimal meshes (refined editorial scale)
+  // Dimensions: minimal compact cards
   const isMobile = viewport.width < 7.5;
   const cardWidth = isMobile
     ? Math.min(1.4, Math.max(1.0, viewport.width * 0.24))
@@ -44,6 +34,42 @@ function SceneContent({
   // Diagonal offsets matching staircase layout
   const stepX = cardWidth * 1.25;
   const stepY = -cardHeight * 0.68;
+
+  // Configure texture color space, filtering, and cover mapping
+  useEffect(() => {
+    textures.forEach((tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+
+      const applyCover = () => {
+        const img = tex.image as HTMLImageElement | undefined;
+        if (!img || !img.width || !img.height) return;
+
+        const imgAspect = img.width / img.height;
+        const planeAspect = cardWidth / cardHeight;
+
+        if (planeAspect > imgAspect) {
+          // Plane is wider than image: crop top and bottom
+          tex.repeat.set(1, imgAspect / planeAspect);
+          tex.offset.set(0, (1 - imgAspect / planeAspect) / 2);
+        } else {
+          // Plane is taller than image: crop sides
+          tex.repeat.set(planeAspect / imgAspect, 1);
+          tex.offset.set((1 - planeAspect / imgAspect) / 2, 0);
+        }
+        tex.needsUpdate = true;
+      };
+
+      const img = tex.image as HTMLImageElement | undefined;
+      if (img && img.width && img.height) {
+        applyCover();
+      } else if (img && typeof img.addEventListener === "function") {
+        img.addEventListener("load", applyCover);
+      }
+    });
+  }, [textures, cardWidth, cardHeight]);
 
   useFrame((_, delta) => {
     // Subtle auto drift when enabled
