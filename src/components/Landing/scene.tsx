@@ -15,7 +15,6 @@ BASE_ITEMS.forEach((item) => {
 interface SceneContentProps {
   targetScrollRef: React.MutableRefObject<number>;
   currentScrollRef: React.MutableRefObject<number>;
-  scrollVelocityRef: React.MutableRefObject<number>;
   introActiveRef: React.MutableRefObject<boolean>;
   scaleRef: React.MutableRefObject<number>;
   autoPlay: boolean;
@@ -26,7 +25,6 @@ interface SceneContentProps {
 function SceneContent({
   targetScrollRef,
   currentScrollRef,
-  scrollVelocityRef,
   introActiveRef,
   scaleRef,
   autoPlay,
@@ -115,29 +113,17 @@ function SceneContent({
         }
       }
 
-      // Apply frame-rate independent exponential friction decay to the rolling momentum
-      const friction = Math.pow(0.91, Math.min(3, delta * 60));
-      scrollVelocityRef.current *= friction;
-
-      if (Math.abs(scrollVelocityRef.current) < 0.0004) {
-        scrollVelocityRef.current = 0;
-      }
-
-      // Smoothly advance targetScroll by the decaying velocity
-      targetScrollRef.current += scrollVelocityRef.current * delta * 5.2;
-
       // Subtle auto drift when explicitly re-enabled (default is off after intro)
       if (autoPlay) {
         targetScrollRef.current += 0.16 * delta;
       }
 
-      // Lenis-style exponential damping (MathUtils.damp):
-      // Smooth 5.5 lambda decay ensures velvety inertia without stiff snapping
-      currentScrollRef.current = THREE.MathUtils.damp(
+      // Smooth lerp for manual scroll navigation
+      const lerpSpeed = Math.min(1, delta * 12);
+      currentScrollRef.current = THREE.MathUtils.lerp(
         currentScrollRef.current,
         targetScrollRef.current,
-        5.5,
-        delta
+        lerpSpeed
       );
     }
   });
@@ -165,7 +151,6 @@ interface SceneProps {
   autoPlay?: boolean;
   targetScrollRef: React.MutableRefObject<number>;
   currentScrollRef: React.MutableRefObject<number>;
-  scrollVelocityRef: React.MutableRefObject<number>;
   introActiveRef: React.MutableRefObject<boolean>;
   scaleRef: React.MutableRefObject<number>;
   onIntroComplete?: () => void;
@@ -176,7 +161,6 @@ export default function Scene({
   autoPlay = false,
   targetScrollRef,
   currentScrollRef,
-  scrollVelocityRef,
   introActiveRef,
   scaleRef,
   onIntroComplete,
@@ -204,7 +188,6 @@ export default function Scene({
         <SceneContent
           targetScrollRef={targetScrollRef}
           currentScrollRef={currentScrollRef}
-          scrollVelocityRef={scrollVelocityRef}
           introActiveRef={introActiveRef}
           scaleRef={scaleRef}
           autoPlay={autoPlay}
