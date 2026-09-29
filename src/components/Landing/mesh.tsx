@@ -58,10 +58,24 @@ export default function MeshCard({
       8,
       delta
     );
+
+    // Distance falloff from center: middle card is 100% visible,
+    // immediate neighbors are softly translucent, and outer cards fade away into background
+    const dist = Math.abs(virtualPos);
+    const targetOpacity = Math.max(0, Math.min(1, 1 - Math.pow(dist / 1.75, 2.2)));
+    if (meshRef.current.material) {
+      (meshRef.current.material as THREE.ShaderMaterial).opacity = targetOpacity;
+    }
   });
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    const virtualPos = wrap(
+      index - currentScrollRef.current,
+      -halfCount,
+      halfCount
+    );
+    if (Math.abs(virtualPos) > 1.4) return;
     onSelectCard?.(index);
   };
 
@@ -75,6 +89,12 @@ export default function MeshCard({
       transparent
       zoom={hovered ? 1.04 : 1.0}
       onPointerOver={(e) => {
+        const virtualPos = wrap(
+          index - currentScrollRef.current,
+          -halfCount,
+          halfCount
+        );
+        if (Math.abs(virtualPos) > 1.4) return;
         e.stopPropagation();
         setHovered(true);
       }}

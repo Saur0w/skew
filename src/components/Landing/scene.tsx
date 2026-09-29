@@ -36,9 +36,10 @@ function SceneContent({
   const introStartTimeRef = useRef<number | null>(null);
 
   // Intro choreography constants
-  const INTRO_DURATION = 2.8; // seconds for smooth, luxurious deceleration
+  const INTRO_DURATION = 3.0; // seconds for smooth, luxurious deceleration
   const INTRO_DISTANCE = 18.0; // exact integer items: lands precisely centered on item 0 (Celestial Drift)
-  const INITIAL_SCALE = 0.38; // initial miniature scale
+  const INITIAL_SCALE = 0.32; // small miniature scale at start
+  const FINAL_SCALE = 1.40; // more zoom at the end for prominent hero display
 
   // Pre-fetch all base textures into Drei cache so all meshes render smoothly
   const textureUrls = BASE_ITEMS.map((item) => item.src);
@@ -47,10 +48,10 @@ function SceneContent({
   // Dimensions: subtle portrait cards (moderately more height than width)
   const isMobile = viewport.width < 7.5;
   const cardWidth = isMobile
-    ? Math.min(2.1, Math.max(1.4, viewport.width * 0.32))
-    : Math.min(2.2, Math.max(1.6, viewport.width * 0.135));
-  // Subtle portrait aspect ratio (~4:5, ~1.2x): more height than width, not too extreme
-  const cardHeight = cardWidth * 1.2;
+    ? Math.min(2.2, Math.max(1.5, viewport.width * 0.33))
+    : Math.min(2.35, Math.max(1.65, viewport.width * 0.14));
+  // Subtle portrait aspect ratio (~4:5, ~1.22x): more height than width, not too extreme
+  const cardHeight = cardWidth * 1.22;
 
   // Diagonal offsets matching staircase layout
   const stepX = cardWidth * 1.22;
@@ -65,14 +66,17 @@ function SceneContent({
       const elapsed = state.clock.elapsedTime - introStartTimeRef.current;
       const progress = Math.min(1, Math.max(0, elapsed / INTRO_DURATION));
 
-      // Quartic Out easing: starts at very high velocity (~25 items/sec) and smoothly glides to 0
-      const scrollEase = 1 - Math.pow(1 - progress, 4);
+      // Scroll easing ("starting a bit slow"):
+      // Starts gently (~2.7 items/s), accelerates into fast drift (~12 items/s),
+      // then progressively slows down and lands smoothly on center image at progress = 1
+      const e1 = 10 * Math.pow(progress, 2) - 20 * Math.pow(progress, 3) + 15 * Math.pow(progress, 4) - 4 * Math.pow(progress, 5);
+      const e2 = 1 - Math.pow(1 - progress, 3);
+      const scrollEase = 0.85 * e1 + 0.15 * e2;
 
-      // Cubic Out easing for scale: smoothly blossoms from small miniature to full 1.0 size
-      const scaleEase = 1 - Math.pow(1 - progress, 3);
-
-      // Update scale on parent group (scales both card size and relative spacing seamlessly)
-      const currentScale = INITIAL_SCALE + (1.0 - INITIAL_SCALE) * scaleEase;
+      // Scale easing ("more zoom at the end"):
+      // Stays compact during fast reel, then surges into a dramatic hero zoom as motion halts
+      const scaleEase = Math.pow(progress, 1.7);
+      const currentScale = INITIAL_SCALE + (FINAL_SCALE - INITIAL_SCALE) * scaleEase;
       scaleRef.current = currentScale;
       if (groupRef.current) {
         groupRef.current.scale.set(currentScale, currentScale, 1);
@@ -88,24 +92,24 @@ function SceneContent({
         introActiveRef.current = false;
         currentScrollRef.current = INTRO_DISTANCE;
         targetScrollRef.current = INTRO_DISTANCE;
-        scaleRef.current = 1.0;
+        scaleRef.current = FINAL_SCALE;
         if (groupRef.current) {
-          groupRef.current.scale.set(1.0, 1.0, 1);
+          groupRef.current.scale.set(FINAL_SCALE, FINAL_SCALE, 1);
         }
         onIntroComplete?.();
       }
     } else {
       // Manual scrolling mode
-      // Damp scale to 1.0 in case user interrupted intro before completion
-      if (scaleRef.current < 0.999) {
-        scaleRef.current = THREE.MathUtils.damp(scaleRef.current, 1.0, 10, delta);
+      // Damp scale to FINAL_SCALE in case user interrupted intro before completion
+      if (scaleRef.current < FINAL_SCALE - 0.001) {
+        scaleRef.current = THREE.MathUtils.damp(scaleRef.current, FINAL_SCALE, 8, delta);
         if (groupRef.current) {
           groupRef.current.scale.set(scaleRef.current, scaleRef.current, 1);
         }
-      } else if (scaleRef.current !== 1.0) {
-        scaleRef.current = 1.0;
+      } else if (scaleRef.current !== FINAL_SCALE) {
+        scaleRef.current = FINAL_SCALE;
         if (groupRef.current) {
-          groupRef.current.scale.set(1.0, 1.0, 1);
+          groupRef.current.scale.set(FINAL_SCALE, FINAL_SCALE, 1);
         }
       }
 

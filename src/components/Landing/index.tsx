@@ -21,7 +21,7 @@ export default function Landing() {
   const targetScrollRef = useRef(0);
   const currentScrollRef = useRef(0);
   const introActiveRef = useRef(true);
-  const scaleRef = useRef(0.38);
+  const scaleRef = useRef(0.32);
 
   // Interaction states: autoPlay is false because scroll stops after intro
   const [autoPlay, setAutoPlay] = useState(false);
@@ -184,6 +184,9 @@ export default function Landing() {
           onSelectCard={handleSelectCard}
         />
       </div>
+
+      {/* Vintage border vignette overlay */}
+      <div className={styles.vignetteOverlay} />
     </div>
   );
 }
