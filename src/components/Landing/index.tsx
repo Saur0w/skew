@@ -20,6 +20,7 @@ export default function Landing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const targetScrollRef = useRef(0);
   const currentScrollRef = useRef(0);
+  const scrollVelocityRef = useRef(0);
   const introActiveRef = useRef(true);
   const scaleRef = useRef(0.32);
 
@@ -56,6 +57,7 @@ export default function Landing() {
     (index: number) => {
       if (hasMovedRef.current) return; // Prevent selection if user was dragging
       cancelIntro();
+      scrollVelocityRef.current = 0; // Clear inertia so card glides directly into center
       const halfCount = TOTAL_ITEMS_COUNT / 2;
       const current = currentScrollRef.current;
       const diff = wrap(index - current, -halfCount, halfCount);
@@ -84,9 +86,13 @@ export default function Landing() {
     lenis.on("virtual-scroll", (e: { deltaX: number; deltaY: number }) => {
       if (isPointerDown.current) return;
       cancelIntro();
-      // Trackpad or mouse wheel: combine deltaY and deltaX for natural diagonal response
-      const delta = (e.deltaY * 0.0018) + (e.deltaX * 0.0009);
-      targetScrollRef.current += delta;
+
+      // Normalize delta across operating systems & input devices:
+      // Lenis automatically normalizes deltaMode (lines, pixels, pages)
+      const rawDelta = (e.deltaY * 0.0012) + (e.deltaX * 0.0006);
+
+      // Accumulate smooth momentum impulse into rolling velocity (Lenis physics)
+      scrollVelocityRef.current += rawDelta * 7.5;
     });
 
     return () => {
@@ -102,9 +108,11 @@ export default function Landing() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") {
         cancelIntro();
+        scrollVelocityRef.current = 0;
         targetScrollRef.current = Math.round(targetScrollRef.current) + 1;
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
         cancelIntro();
+        scrollVelocityRef.current = 0;
         targetScrollRef.current = Math.round(targetScrollRef.current) - 1;
       } else if (e.key === " ") {
         cancelIntro();
@@ -122,6 +130,7 @@ export default function Landing() {
     isPointerDown.current = true;
     hasMovedRef.current = false;
     setIsDragging(true);
+    scrollVelocityRef.current = 0; // Halt coasting on direct touch
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     dragStartScroll.current = targetScrollRef.current;
     lastPointerPos.current = { x: e.clientX, y: e.clientY, time: performance.now() };
@@ -157,9 +166,9 @@ export default function Landing() {
     isPointerDown.current = false;
     setIsDragging(false);
 
-    // Apply inertia fling
-    if (Math.abs(dragVelocity.current) > 0.05) {
-      targetScrollRef.current += dragVelocity.current * 0.45;
+    // Transfer drag fling momentum directly into scrollVelocityRef
+    if (Math.abs(dragVelocity.current) > 0.02) {
+      scrollVelocityRef.current = dragVelocity.current * 1.8;
     }
   };
 
@@ -178,6 +187,7 @@ export default function Landing() {
           autoPlay={autoPlay}
           targetScrollRef={targetScrollRef}
           currentScrollRef={currentScrollRef}
+          scrollVelocityRef={scrollVelocityRef}
           introActiveRef={introActiveRef}
           scaleRef={scaleRef}
           onIntroComplete={handleIntroComplete}
