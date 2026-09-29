@@ -3,6 +3,7 @@
 import React, { useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { Image as DreiImage } from "@react-three/drei";
 import { GalleryItem, TOTAL_ITEMS_COUNT } from "@/lib/data";
 
 function wrap(val: number, min: number, max: number): number {
@@ -13,7 +14,6 @@ function wrap(val: number, min: number, max: number): number {
 interface MeshCardProps {
   item: GalleryItem;
   index: number;
-  texture: THREE.Texture;
   width: number;
   height: number;
   stepX: number;
@@ -24,7 +24,6 @@ interface MeshCardProps {
 export default function MeshCard({
   item,
   index,
-  texture,
   width,
   height,
   stepX,
@@ -51,12 +50,14 @@ export default function MeshCard({
   });
 
   return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[width, height]} />
-      <meshBasicMaterial
-        map={texture}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <DreiImage
+      ref={meshRef}
+      url={item.src}
+      scale={[width, height]}
+      side={THREE.DoubleSide}
+      toneMapped={false}
+      transparent
+    />
   );
 }
+

@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useEffect, Suspense } from "react";
+import React, { Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import MeshCard from "./mesh";
 import { GALLERY_ITEMS, BASE_ITEMS } from "@/lib/data";
+
+// Preload all textures in advance
+BASE_ITEMS.forEach((item) => {
+  useTexture.preload(item.src);
+});
 
 interface SceneContentProps {
   targetScrollRef: React.MutableRefObject<number>;
@@ -20,56 +25,21 @@ function SceneContent({
 }: SceneContentProps) {
   const { viewport } = useThree();
 
-  // Load the 9 base textures from public/images/
+  // Pre-fetch all base textures into Drei cache so all meshes render smoothly
   const textureUrls = BASE_ITEMS.map((item) => item.src);
-  const textures = useTexture(textureUrls);
+  useTexture(textureUrls);
 
-  // Dimensions: minimal compact cards
+  // Dimensions: subtle portrait cards (moderately more height than width)
   const isMobile = viewport.width < 7.5;
   const cardWidth = isMobile
-    ? Math.min(1.4, Math.max(1.0, viewport.width * 0.24))
-    : Math.min(1.3, Math.max(0.9, viewport.width * 0.082));
-  const cardHeight = cardWidth * 1.38;
+    ? Math.min(2.1, Math.max(1.4, viewport.width * 0.32))
+    : Math.min(2.2, Math.max(1.6, viewport.width * 0.135));
+  // Subtle portrait aspect ratio (~4:5, ~1.2x): more height than width, not too extreme
+  const cardHeight = cardWidth * 1.2;
 
   // Diagonal offsets matching staircase layout
-  const stepX = cardWidth * 1.25;
+  const stepX = cardWidth * 1.22;
   const stepY = -cardHeight * 0.68;
-
-  // Configure texture color space, filtering, and cover mapping
-  useEffect(() => {
-    textures.forEach((tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.generateMipmaps = true;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-
-      const applyCover = () => {
-        const img = tex.image as HTMLImageElement | undefined;
-        if (!img || !img.width || !img.height) return;
-
-        const imgAspect = img.width / img.height;
-        const planeAspect = cardWidth / cardHeight;
-
-        if (planeAspect > imgAspect) {
-          // Plane is wider than image: crop top and bottom
-          tex.repeat.set(1, imgAspect / planeAspect);
-          tex.offset.set(0, (1 - imgAspect / planeAspect) / 2);
-        } else {
-          // Plane is taller than image: crop sides
-          tex.repeat.set(planeAspect / imgAspect, 1);
-          tex.offset.set((1 - planeAspect / imgAspect) / 2, 0);
-        }
-        tex.needsUpdate = true;
-      };
-
-      const img = tex.image as HTMLImageElement | undefined;
-      if (img && img.width && img.height) {
-        applyCover();
-      } else if (img && typeof img.addEventListener === "function") {
-        img.addEventListener("load", applyCover);
-      }
-    });
-  }, [textures, cardWidth, cardHeight]);
 
   useFrame((_, delta) => {
     // Subtle auto drift when enabled
@@ -88,23 +58,18 @@ function SceneContent({
 
   return (
     <group>
-      {GALLERY_ITEMS.map((item, index) => {
-        const texture = textures[item.imageIndex - 1];
-
-        return (
-          <MeshCard
-            key={item.id}
-            item={item}
-            index={index}
-            texture={texture}
-            width={cardWidth}
-            height={cardHeight}
-            stepX={stepX}
-            stepY={stepY}
-            currentScrollRef={currentScrollRef}
-          />
-        );
-      })}
+      {GALLERY_ITEMS.map((item, index) => (
+        <MeshCard
+          key={item.id}
+          item={item}
+          index={index}
+          width={cardWidth}
+          height={cardHeight}
+          stepX={stepX}
+          stepY={stepY}
+          currentScrollRef={currentScrollRef}
+        />
+      ))}
     </group>
   );
 }
